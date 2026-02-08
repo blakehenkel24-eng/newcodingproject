@@ -149,35 +149,68 @@ export default function SignupPage() {
     }
   };
 
+  // Check if test email
+  const isTestEmail = (email: string) => {
+    const testEmails = ['test@slidetheory.com', 'admin@slidetheory.com', 'demo@slidetheory.com'];
+    return testEmails.includes(email.toLowerCase());
+  };
+
   // Success State
   if (isSuccess) {
+    const testUser = isTestEmail(email);
+    
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 px-4 py-12 sm:px-6 lg:px-8">
         <div className="max-w-md w-full">
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 text-center">
-            <div className="mx-auto h-20 w-20 bg-green-100 rounded-full flex items-center justify-center mb-6">
-              <svg
-                className="h-10 w-10 text-green-600"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                />
-              </svg>
+            <div className={`mx-auto h-20 w-20 rounded-full flex items-center justify-center mb-6 ${testUser ? 'bg-purple-100' : 'bg-green-100'}`}>
+              {testUser ? (
+                <svg className="h-10 w-10 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              ) : (
+                <svg className="h-10 w-10 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              )}
             </div>
-            <h2 className="text-2xl font-bold text-navy mb-4">
-              Verify your email
-            </h2>
-            <p className="text-gray-600 mb-6">
-              We&apos;ve sent a verification link to{' '}
-              <span className="font-semibold text-gray-900">{email}</span>. Please
-              check your inbox and click the link to complete your registration.
-            </p>
+            
+            {testUser ? (
+              <>
+                <h2 className="text-2xl font-bold text-navy mb-4">
+                  Test Account Created!
+                </h2>
+                <div className="bg-purple-50 border border-purple-100 rounded-lg p-4 mb-6 text-left">
+                  <p className="text-sm text-purple-800 mb-2">
+                    <strong>Test User Detected:</strong> {email}
+                  </p>
+                  <p className="text-sm text-gray-600 mb-3">
+                    Since this is a test email, you need to manually confirm it in Supabase:
+                  </p>
+                  <ol className="text-sm text-gray-600 list-decimal list-inside space-y-1">
+                    <li>Go to Supabase Dashboard</li>
+                    <li>Navigate to Authentication → Users</li>
+                    <li>Find <strong>{email}</strong></li>
+                    <li>Click the three dots (⋮) → Confirm email</li>
+                  </ol>
+                </div>
+                <p className="text-gray-600 mb-6">
+                  Once confirmed, you&apos;ll have <strong>unlimited slide generations</strong>!
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 className="text-2xl font-bold text-navy mb-4">
+                  Verify your email
+                </h2>
+                <p className="text-gray-600 mb-6">
+                  We&apos;ve sent a verification link to{' '}
+                  <span className="font-semibold text-gray-900">{email}</span>. Please
+                  check your inbox and click the link to complete your registration.
+                </p>
+              </>
+            )}
+            
             <div className="space-y-4">
               <button
                 onClick={() => router.push('/login')}
@@ -192,15 +225,18 @@ export default function SignupPage() {
                 Use a different email
               </button>
             </div>
-            <p className="mt-6 text-xs text-gray-500">
-              Didn&apos;t receive the email? Check your spam folder or{' '}
-              <button
-                onClick={handleSignup}
-                className="text-accent-teal hover:text-navy font-medium"
-              >
-                resend verification
-              </button>
-            </p>
+            
+            {!testUser && (
+              <p className="mt-6 text-xs text-gray-500">
+                Didn&apos;t receive the email? Check your spam folder or{' '}
+                <button
+                  onClick={handleSignup}
+                  className="text-accent-teal hover:text-navy font-medium"
+                >
+                  resend verification
+                </button>
+              </p>
+            )}
           </div>
         </div>
       </div>
