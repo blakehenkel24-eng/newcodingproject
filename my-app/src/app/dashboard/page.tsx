@@ -18,6 +18,7 @@ export default function Dashboard() {
   const [slideHistory, setSlideHistory] = useState<SlideRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [remainingGenerations, setRemainingGenerations] = useState(10);
+  const [isTestUser, setIsTestUser] = useState(false);
   const slideRef = useRef<HTMLDivElement>(null);
   const [showHistory, setShowHistory] = useState(false);
   const router = useRouter();
@@ -44,7 +45,11 @@ export default function Dashboard() {
         .single();
 
       setUser(profile);
-      setRemainingGenerations(10 - (profile?.daily_generation_count || 0));
+      // Check if test user (unlimited generations)
+      const testEmails = ['test@slidetheory.com', 'admin@slidetheory.com', 'demo@slidetheory.com'];
+      const isTest = testEmails.includes(profile?.email?.toLowerCase());
+      setIsTestUser(isTest);
+      setRemainingGenerations(isTest ? 999 : 10 - (profile?.daily_generation_count || 0));
       await fetchSlideHistory(authUser.id);
     } catch {
       router.push('/login');
@@ -101,9 +106,15 @@ export default function Dashboard() {
           <span className="px-2 py-0.5 text-xs bg-teal-100 text-teal-700 rounded-full">Beta</span>
         </div>
         <div className="flex items-center space-x-3">
-          <span className="text-xs text-gray-500">
-            {remainingGenerations} generation{remainingGenerations !== 1 ? 's' : ''} left
-          </span>
+          {isTestUser ? (
+            <span className="px-2 py-0.5 text-xs bg-purple-100 text-purple-700 rounded-full font-medium">
+              Test User - Unlimited
+            </span>
+          ) : (
+            <span className="text-xs text-gray-500">
+              {remainingGenerations} generation{remainingGenerations !== 1 ? 's' : ''} left
+            </span>
+          )}
           <button 
             onClick={() => setShowHistory(!showHistory)} 
             className="text-sm text-gray-600 hover:text-slate-900 px-3 py-1.5 rounded-md hover:bg-gray-100"

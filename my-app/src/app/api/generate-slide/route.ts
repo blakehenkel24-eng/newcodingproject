@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check rate limit
-    const { allowed, remaining, profile } = await checkRateLimit(user.id);
+    const { allowed, remaining, profile, isTestUser } = await checkRateLimit(user.id);
 
     if (!allowed) {
       return NextResponse.json(

@@ -353,6 +353,7 @@ export interface SlideData {
   qaScore: number;
   qaPassed: boolean;
   qaRecommendations?: string[];
+  isTestUser?: boolean;
 }
 
 export interface SlideTemplatePropsBase {
