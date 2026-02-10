@@ -22,7 +22,6 @@ interface FluxPipelineInput {
   slideType: ArchetypeId | 'auto';
   audience: TargetAudience;
   density: DensityMode;
-  userId?: string;
 }
 
 interface FluxPipelineResult {
@@ -83,14 +82,12 @@ export async function runFluxPipeline(
     // === STAGE 3: Build Flux Prompt ===
     console.log('[Flux Pipeline] Stage 3: Building Flux prompt...');
     
-    const style = detectStyleFromInput(input.text) || 'mckinsey';
-    
+    // Build Flux prompt - archetype determines visual style automatically
     let prompt = buildFluxPrompt({
       structured,
       archetypeId,
       audience: input.audience,
       density: input.density,
-      style,
     });
     
     // Enhance prompt for better text rendering
@@ -131,27 +128,7 @@ export async function runFluxPipeline(
   }
 }
 
-/**
- * Detect visual style preference from user input
- */
-function detectStyleFromInput(text: string): 'mckinsey' | 'bcg' | 'bain' | 'modern' | null {
-  const lower = text.toLowerCase();
-  
-  if (lower.includes('bcg') || lower.includes('boston consulting')) {
-    return 'bcg';
-  }
-  if (lower.includes('bain')) {
-    return 'bain';
-  }
-  if (lower.includes('modern') || lower.includes('saas') || lower.includes('tech')) {
-    return 'modern';
-  }
-  if (lower.includes('mckinsey') || lower.includes('consulting') || lower.includes('professional')) {
-    return 'mckinsey';
-  }
-  
-  return null;
-}
+
 
 /**
  * Run pipeline with multiple variations

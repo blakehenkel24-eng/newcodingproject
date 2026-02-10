@@ -19,7 +19,7 @@ export interface FluxImagePrompt {
   prompt: string;
   negativePrompt?: string;
   aspectRatio: '16:9' | '4:3';
-  style: 'mckinsey' | 'bcg' | 'bain' | 'modern';
+  style?: 'mckinsey' | 'bcg' | 'bain' | 'modern'; // Kept for compatibility
   guidanceScale: number;
   numInferenceSteps: number;
 }

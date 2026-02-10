@@ -183,7 +183,7 @@ export default function Dashboard() {
             className="flex items-center gap-1.5 text-sm text-purple-600 hover:text-purple-700 px-3 py-1.5 rounded-md hover:bg-purple-50 transition-colors"
           >
             <Sparkles className="w-4 h-4" />
-            Try Flux 2.0
+            Flux Images
           </a>
           <div className="w-px h-4 bg-gray-300" />
           {isTestUser ? (

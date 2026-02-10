@@ -1,6 +1,7 @@
 /**
  * Flux 2.0 Prompt Builder
  * Builds optimized prompts for image generation from slide content
+ * Archetype determines all visual styling - no separate style selection
  */
 
 import { 
@@ -20,7 +21,6 @@ interface PromptBuilderInput {
   archetypeId: ArchetypeId;
   audience: TargetAudience;
   density: DensityMode;
-  style: 'mckinsey' | 'bcg' | 'bain' | 'modern';
 }
 
 // Audience-specific visual modifiers
@@ -32,18 +32,13 @@ const AUDIENCE_MODIFIERS: Record<TargetAudience, string> = {
 };
 
 // Density modifiers
-const DENSITY_MODIFIERS: Record<DensityMode, string> => {
+const DENSITY_MODIFIERS: Record<DensityMode, string> = {
   presentation: 'minimal text, large visuals, presenter-supporting, key points only',
   read_style: 'more detailed, self-contained, comprehensive information, readable standalone',
 };
 
-// Style-specific visual guidelines
-const STYLE_GUIDELINES: Record<string, string> = {
-  mckinsey: 'McKinsey consulting style, dark navy blue background (#0F172A), white and teal (#14B8A6) accents, clean sans-serif typography, minimal design, high contrast, professional executive presentation',
-  bcg: 'BCG consulting style, deep green background, white and light green accents, structured grid layout, bold typography, corporate professional',
-  bain: 'Bain consulting style, crimson red accents, clean white or light background, bold headlines, modern corporate design',
-  modern: 'Modern SaaS style, gradient backgrounds, purple and blue accents, rounded corners, contemporary design, tech startup aesthetic',
-};
+// Base visual style for all slides - professional consulting aesthetic
+const BASE_VISUAL_STYLE = 'Professional McKinsey-style consulting presentation, dark navy blue background (#0F172A), white text, teal (#14B8A6) accent color for highlights, clean sans-serif typography (Inter or similar), high contrast, minimal design, 16:9 aspect ratio';
 
 /**
  * Extract key content for the prompt
@@ -57,59 +52,15 @@ function extractKeyContent(structured: StructuredContent): {
   
   // Extract metrics
   const keyMetrics = structured.dataPoints
-    .slice(0, 3)
+    .slice(0, 4)
     .map(dp => `${dp.label}: ${dp.value}${dp.unit || ''}`);
   
   // Extract main points from logical groups
   const mainPoints = structured.logicalGroups
-    .slice(0, 3)
-    .flatMap(g => g.bullets.slice(0, 2));
+    .slice(0, 4)
+    .flatMap(g => g.bullets.slice(0, 3));
   
   return { title, keyMetrics, mainPoints };
-}
-
-/**
- * Build base prompt for any archetype
- */
-function buildBasePrompt(
-  config: FluxArchetypeConfig,
-  content: { title: string; keyMetrics: string[]; mainPoints: string[] },
-  style: string,
-  audience: string,
-  density: string
-): string {
-  const parts: string[] = [
-    // Core subject
-    `Professional consulting slide: "${content.title}"`,
-    
-    // Archetype-specific layout
-    config.visualStyle,
-    config.layoutGuidance,
-    
-    // Content elements
-    content.keyMetrics.length > 0 
-      ? `Key metrics displayed: ${content.keyMetrics.join(', ')}`
-      : '',
-    content.mainPoints.length > 0
-      ? `Main points: ${content.mainPoints.join('; ')}`
-      : '',
-    
-    // Visual style
-    style,
-    
-    // Audience and density
-    audience,
-    density,
-    
-    // Technical specs
-    '16:9 aspect ratio',
-    'high quality',
-    'professional photography style',
-    'sharp text',
-    'readable fonts',
-  ];
-  
-  return parts.filter(Boolean).join('. ');
 }
 
 /**
@@ -198,6 +149,31 @@ function buildArchetypeContentDescription(
       return `Issue tree breaking down "${root}" into: ${branches.join(', ')}`;
     }
     
+    case 'decision_tree': {
+      const branches = logicalGroups.slice(0, 4).map(g => g.heading);
+      return `Decision tree with branches: ${branches.join(', ')}`;
+    }
+    
+    case 'grid_cards': {
+      const cards = logicalGroups.slice(0, 6).map(g => g.heading);
+      return `Grid of cards showing: ${cards.join(', ')}`;
+    }
+    
+    case 'competitive_landscape': {
+      const competitors = logicalGroups.slice(0, 6).map(g => g.heading);
+      return `Competitive landscape with: ${competitors.join(', ')}`;
+    }
+    
+    case 'agenda_divider': {
+      const sections = logicalGroups.slice(0, 6).map(g => g.heading);
+      return `Agenda with sections: ${sections.join(', ')}`;
+    }
+    
+    case 'stacked_bar': {
+      const categories = dataPoints.slice(0, 6).map(dp => dp.label);
+      return `Stacked bar chart showing: ${categories.join(', ')}`;
+    }
+    
     default:
       return structured.coreMessage;
   }
@@ -228,6 +204,13 @@ function buildNegativePrompt(): string {
     'photorealistic people',
     'faces',
     'photographs',
+    'clip art',
+    'cartoon',
+    'anime',
+    '3D render',
+    'unrealistic',
+    'surreal',
+    'abstract art',
   ].join(', ');
 }
 
@@ -235,16 +218,15 @@ function buildNegativePrompt(): string {
  * Main function to build Flux prompt
  */
 export function buildFluxPrompt(input: PromptBuilderInput): FluxImagePrompt {
-  const { structured, archetypeId, audience, density, style } = input;
+  const { structured, archetypeId, audience, density } = input;
   
-  // Get archetype config
+  // Get archetype config - this determines the visual layout
   const config = FLUX_ARCHETYPE_CONFIGS[archetypeId];
   
   // Extract content
   const content = extractKeyContent(structured);
   
   // Get modifiers
-  const styleGuideline = STYLE_GUIDELINES[style];
   const audienceModifier = AUDIENCE_MODIFIERS[audience];
   const densityModifier = DENSITY_MODIFIERS[density];
   
@@ -253,39 +235,41 @@ export function buildFluxPrompt(input: PromptBuilderInput): FluxImagePrompt {
   
   // Combine into final prompt
   const prompt = [
-    `Professional consulting slide design: ${content.title}`,
+    // Subject
+    `Professional consulting slide: "${content.title}"`,
     '',
     'CONTENT:',
     archetypeContent,
-    content.keyMetrics.length > 0 ? `Metrics: ${content.keyMetrics.join(', ')}` : '',
+    content.keyMetrics.length > 0 ? `Key metrics: ${content.keyMetrics.join(', ')}` : '',
+    content.mainPoints.length > 0 ? `Supporting points: ${content.mainPoints.join('; ')}` : '',
     '',
-    'VISUAL SPECIFICATIONS:',
+    'LAYOUT AND COMPOSITION:',
     config.visualStyle,
     config.layoutGuidance,
     config.colorPalette,
     config.typographyStyle,
     '',
-    'STYLE:',
-    styleGuideline,
+    'VISUAL STYLE:',
+    BASE_VISUAL_STYLE,
     audienceModifier,
     densityModifier,
     '',
-    'TECHNICAL:',
+    'TECHNICAL SPECIFICATIONS:',
     '16:9 aspect ratio presentation slide',
-    'High resolution',
-    'Sharp, readable text',
+    'High resolution, 4K quality',
+    'Sharp, perfectly readable text',
     'Professional color grading',
-    'Clean, minimal design',
-    'Dark background with light text',
+    'Clean, minimal design aesthetic',
     'No photographs or faces',
     'Vector graphic style',
-  ].filter(Boolean).join('\n');
+    'Consulting-grade presentation quality',
+  ].filter(Boolean).join('. ');
   
   return {
     prompt,
     negativePrompt: buildNegativePrompt(),
     aspectRatio: '16:9',
-    style,
+    style: 'mckinsey',
     guidanceScale: 7.5,
     numInferenceSteps: 28,
   };
@@ -293,34 +277,33 @@ export function buildFluxPrompt(input: PromptBuilderInput): FluxImagePrompt {
 
 /**
  * Enhance prompt with specific text elements for better accuracy
- * This adds explicit text instructions to help Flux render text better
  */
 export function enhancePromptWithTextElements(
   basePrompt: FluxImagePrompt,
   structured: StructuredContent
 ): FluxImagePrompt {
-  // Create a text instruction overlay
+  // Create a text instruction overlay with key text elements
   const textElements = [
-    `Title text: "${structured.title}"`,
-    ...structured.dataPoints.slice(0, 4).map(dp => 
-      `${dp.label}: ${dp.value}${dp.unit || ''}`
+    `HEADLINE: "${structured.title}"`,
+    ...structured.dataPoints.slice(0, 5).map(dp => 
+      `DATA: ${dp.label} = ${dp.value}${dp.unit || ''}`
     ),
-    ...structured.logicalGroups.slice(0, 3).flatMap(g => 
-      g.bullets.slice(0, 2).map(b => `${g.heading}: ${b.substring(0, 50)}`)
+    ...structured.logicalGroups.slice(0, 3).flatMap((g, gi) => 
+      g.bullets.slice(0, 2).map((b, bi) => `POINT ${gi + 1}.${bi + 1}: ${b.substring(0, 60)}`)
     ),
   ];
   
   const enhancedPrompt = `${basePrompt.prompt}
 
-TEXT ELEMENTS TO INCLUDE (render these exact phrases clearly):
-${textElements.map(t => `- "${t}"`).join('\n')}
+REQUIRED TEXT ELEMENTS (render these clearly and accurately):
+${textElements.map(t => `- ${t}`).join('\n')}
 
-Ensure all text is legible, properly spelled, and professionally formatted.`;
+CRITICAL: Ensure all text is perfectly legible, correctly spelled, and professionally formatted. Text accuracy is the most important requirement.`;
   
   return {
     ...basePrompt,
     prompt: enhancedPrompt,
-    guidanceScale: 8.0, // Slightly higher for text accuracy
+    guidanceScale: 8.0, // Higher for text accuracy
     numInferenceSteps: 30, // More steps for better quality
   };
 }
@@ -330,17 +313,15 @@ Ensure all text is legible, properly spelled, and professionally formatted.`;
  */
 export function buildQuickPrompt(
   title: string,
-  archetypeId: ArchetypeId,
-  style: 'mckinsey' | 'bcg' | 'bain' | 'modern' = 'mckinsey'
+  archetypeId: ArchetypeId
 ): FluxImagePrompt {
   const config = FLUX_ARCHETYPE_CONFIGS[archetypeId];
-  const styleGuideline = STYLE_GUIDELINES[style];
   
   return {
-    prompt: `${config.examplePrompt}. Title: "${title}". ${styleGuideline}. High quality, professional, 16:9.`,
+    prompt: `${config.examplePrompt}. Title: "${title}". ${BASE_VISUAL_STYLE}. High quality, professional consulting presentation, 16:9.`,
     negativePrompt: buildNegativePrompt(),
     aspectRatio: '16:9',
-    style,
+    style: 'mckinsey',
     guidanceScale: 7.0,
     numInferenceSteps: 25,
   };
