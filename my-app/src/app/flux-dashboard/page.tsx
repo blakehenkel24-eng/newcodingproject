@@ -189,8 +189,11 @@ export default function FluxDashboardPage() {
           <div className="flex items-center gap-4">
             <a 
               href="/dashboard" 
-              className="text-sm text-slate-600 hover:text-slate-900 transition-colors"
+              className="flex items-center gap-1.5 text-sm text-teal-600 hover:text-teal-700 px-3 py-1.5 rounded-md hover:bg-teal-50 transition-colors"
             >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
               Back to HTML Mode
             </a>
             <div className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center">

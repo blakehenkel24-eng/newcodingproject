@@ -178,6 +178,14 @@ export default function Dashboard() {
           <span className="px-2 py-0.5 text-xs bg-teal-100 text-teal-700 rounded-full">Beta</span>
         </div>
         <div className="flex items-center space-x-3">
+          <a
+            href="/flux-dashboard"
+            className="flex items-center gap-1.5 text-sm text-purple-600 hover:text-purple-700 px-3 py-1.5 rounded-md hover:bg-purple-50 transition-colors"
+          >
+            <Sparkles className="w-4 h-4" />
+            Try Flux 2.0
+          </a>
+          <div className="w-px h-4 bg-gray-300" />
           {isTestUser ? (
             <span className="px-2 py-0.5 text-xs bg-purple-100 text-purple-700 rounded-full font-medium">
               Test User - Unlimited
