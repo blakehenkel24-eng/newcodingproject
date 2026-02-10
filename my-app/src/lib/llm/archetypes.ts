@@ -314,13 +314,15 @@ export const SLIDE_ARCHETYPES: Record<ArchetypeId, ArchetypeDefinition> = {
 
 /**
  * Classify content to determine the best archetype
+ * Uses multiple signals: user intent, data shape, content structure, complexity
  */
 export function classifyContent(
   contentType: string,
   dataPoints: Array<{ label: string; value: string | number }>,
-  userRequest?: string
+  userRequest?: string,
+  logicalGroups?: Array<{ heading: string; bullets: string[] }>
 ): ArchetypeId {
-  // Step 1: Check for explicit archetype mentions in user input
+  // Step 1: Check for explicit archetype mentions in user input (highest priority)
   if (userRequest) {
     const lowerRequest = userRequest.toLowerCase();
     for (const [id, archetype] of Object.entries(SLIDE_ARCHETYPES)) {
@@ -338,7 +340,11 @@ export function classifyContent(
   );
 
   const hasTimeLabels = dataPoints.some((dp) =>
-    /\b(Q[1-4]|20\d{2}|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/i.test(String(dp.label))
+    /\b(Q[1-4]|20\d{2}|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|month|quarter|year)\b/i.test(String(dp.label))
+  );
+
+  const hasComparisonWords = dataPoints.some((dp) =>
+    /\b(vs|versus|compared|difference|gap|change|increase|decrease|growth|decline)\b/i.test(String(dp.label) + ' ' + String(dp.context))
   );
 
   // Time series data → trend_line
@@ -346,12 +352,44 @@ export function classifyContent(
     return 'trend_line';
   }
 
-  // Waterfall indicators
-  if (contentType.includes('bridge') || contentType.includes('waterfall') || contentType.includes('variance')) {
+  // Comparison over time with deltas → waterfall_chart
+  if (hasComparisonWords && numericValues.length >= 3) {
     return 'waterfall_chart';
   }
 
-  // Step 3: Match content_type against archetype triggers
+  // Waterfall/bridge indicators in content type
+  if (contentType.includes('bridge') || contentType.includes('waterfall') || contentType.includes('variance') || contentType.includes('walk')) {
+    return 'waterfall_chart';
+  }
+
+  // Step 3: Analyze logical groups structure
+  if (logicalGroups && logicalGroups.length > 0) {
+    // 3 groups with similar structure → three_pillar
+    if (logicalGroups.length === 3) {
+      return 'three_pillar';
+    }
+
+    // 4-6 groups with short bullets → grid_cards
+    if (logicalGroups.length >= 4 && logicalGroups.length <= 6) {
+      const avgBulletLength = logicalGroups.reduce((sum, g) => 
+        sum + g.bullets.reduce((bSum, b) => bSum + b.length, 0) / (g.bullets.length || 1), 0
+      ) / logicalGroups.length;
+      if (avgBulletLength < 60) {
+        return 'grid_cards';
+      }
+    }
+
+    // Sequential language in groups → process_flow
+    const hasSequentialLanguage = logicalGroups.some((g, i) => 
+      /\b(phase|step|stage|period|quarter|month|week|day)\b/i.test(g.heading) ||
+      g.heading.toLowerCase().includes(String(i + 1))
+    );
+    if (hasSequentialLanguage && logicalGroups.length <= 6) {
+      return 'process_flow';
+    }
+  }
+
+  // Step 4: Match content_type against archetype triggers
   const lowerContent = contentType.toLowerCase();
   for (const [id, archetype] of Object.entries(SLIDE_ARCHETYPES)) {
     for (const trigger of archetype.triggers) {
@@ -361,7 +399,7 @@ export function classifyContent(
     }
   }
 
-  // Step 4: Data-driven defaults
+  // Step 5: Data-driven defaults
   if (numericValues.length >= 3 && numericValues.length <= 5) {
     return 'kpi_dashboard';
   }
@@ -370,7 +408,20 @@ export function classifyContent(
     return hasTimeLabels ? 'trend_line' : 'stacked_bar';
   }
 
-  // Step 5: Fallback to executive_summary
+  // Step 6: Structure-based fallbacks
+  if (logicalGroups) {
+    if (logicalGroups.length === 2) {
+      // Check if it's a before/after structure
+      const headings = logicalGroups.map(g => g.heading.toLowerCase());
+      const hasBeforeAfter = headings.some(h => /\b(current|before|today|as is|baseline)\b/.test(h)) &&
+                             headings.some(h => /\b(future|after|target|to be|goal)\b/.test(h));
+      if (hasBeforeAfter) {
+        return 'before_after';
+      }
+    }
+  }
+
+  // Step 7: Final fallback to executive_summary
   return 'executive_summary';
 }
 

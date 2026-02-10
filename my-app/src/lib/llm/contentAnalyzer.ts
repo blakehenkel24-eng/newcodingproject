@@ -130,6 +130,40 @@ Every slide title MUST follow: [WHAT happened/is true] + [SO WHAT it means] + [N
 5. Lead each group with the most impactful point
 6. Sort groups by importance (most important first)
 
+## LOGICAL GROUPS - MANDATORY (CRITICAL)
+The \\\`logicalGroups\\\` array MUST be populated with content from the input. NEVER return an empty array.
+
+For each key theme in the context, create a group with:
+- **heading**: A descriptive title (5-8 words)
+- **bullets**: 2-5 specific points extracted from the context
+- **emphasis**: "high" for the most important group, "medium" or "low" for others
+
+Example for market expansion content:
+���json
+{
+  "logicalGroups": [
+    {
+      "heading": "Market Opportunity",
+      "bullets": [
+        "$2.1B addressable market in EU coffee segment",
+        "67% of EU consumers prioritize sustainability",
+        "Nespresso dominates with 55% market share"
+      ],
+      "emphasis": "high"
+    },
+    {
+      "heading": "Entry Strategy",
+      "bullets": [
+        "Phased rollout starting with Germany and Netherlands",
+        "Localized sustainability messaging required",
+        "Strategic logistics partnerships critical"
+      ],
+      "emphasis": "medium"
+    }
+  ]
+}
+���
+
 ## CONTENT TYPE CLASSIFICATION
 Select the content type that best describes the input:
 - "comparison" — evaluating options against criteria

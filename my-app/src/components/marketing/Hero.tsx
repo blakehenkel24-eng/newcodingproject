@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, Sparkles, Shield, Lock, Trash2 } from 'lucide-react';
 
 export function Hero() {
   return (
@@ -62,6 +62,22 @@ export function Hero() {
           >
             See Examples
           </a>
+        </div>
+
+        {/* Security Trust Bar */}
+        <div className="flex flex-wrap justify-center gap-4 sm:gap-6 mb-8">
+          <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-full">
+            <Shield className="w-4 h-4 text-green-600" />
+            <span className="text-sm font-medium text-green-700">Zero Data Retention</span>
+          </div>
+          <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-200 rounded-full">
+            <Lock className="w-4 h-4 text-blue-600" />
+            <span className="text-sm font-medium text-blue-700">Auto-Delete After Use</span>
+          </div>
+          <div className="flex items-center gap-2 px-4 py-2 bg-purple-50 border border-purple-200 rounded-full">
+            <Trash2 className="w-4 h-4 text-purple-600" />
+            <span className="text-sm font-medium text-purple-700">Data Never Stored</span>
+          </div>
         </div>
 
         {/* Trust Bar */}

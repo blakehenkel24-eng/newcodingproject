@@ -151,7 +151,7 @@ function CalloutBox({ callout }: { callout: ExecutiveSummaryProps['callout'] }) 
   );
 }
 
-export function ExecutiveSummary({ title, keyMessage, points, callout, footnote, source, density }: ExecutiveSummaryProps) {
+export function ExecutiveSummary({ title, keyMessage, points = [], callout, footnote, source, density }: ExecutiveSummaryProps) {
   const isReadStyle = density === 'read_style';
 
   return (

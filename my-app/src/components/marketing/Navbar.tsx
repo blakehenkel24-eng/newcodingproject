@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { Menu, X } from 'lucide-react';
+import { Logo } from '@/components/Logo';
 
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -19,19 +20,16 @@ export function Navbar() {
         shadow-lg shadow-slate-900/5
       ">
         {/* Logo */}
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center">
-            <span className="text-white font-bold text-sm">S</span>
-          </div>
-          <span className="font-semibold text-slate-900 hidden sm:block">SlideTheory</span>
+        <Link href="/dashboard">
+          <Logo size="sm" showText={true} variant="dark" />
         </Link>
 
         {/* Nav Links - Desktop */}
         <div className="hidden md:flex items-center gap-6">
-          <Link href="/blog" className="text-sm font-medium text-slate-600 hover:text-teal-600 transition-colors">Blog</Link>
-          <Link href="/resources" className="text-sm font-medium text-slate-600 hover:text-teal-600 transition-colors">Resources</Link>
           <a href="#features" className="text-sm font-medium text-slate-600 hover:text-teal-600 transition-colors">Features</a>
           <a href="#pricing" className="text-sm font-medium text-slate-600 hover:text-teal-600 transition-colors">Pricing</a>
+          <Link href="/blog" className="text-sm font-medium text-slate-600 hover:text-teal-600 transition-colors">Blog</Link>
+          <Link href="/resources" className="text-sm font-medium text-slate-600 hover:text-teal-600 transition-colors">Resources</Link>
         </div>
 
         {/* CTA & Mobile Menu */}
@@ -63,20 +61,6 @@ export function Navbar() {
       {isMenuOpen && (
         <div className="md:hidden mt-2 bg-white rounded-2xl border border-slate-200 shadow-lg p-4">
           <div className="flex flex-col gap-3">
-            <Link
-              href="/blog"
-              className="text-sm font-medium text-slate-600 hover:text-teal-600 py-2"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Blog
-            </Link>
-            <Link
-              href="/resources"
-              className="text-sm font-medium text-slate-600 hover:text-teal-600 py-2"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Resources
-            </Link>
             <a 
               href="#features" 
               className="text-sm font-medium text-slate-600 hover:text-teal-600 py-2"
@@ -91,6 +75,20 @@ export function Navbar() {
             >
               Pricing
             </a>
+            <Link
+              href="/blog"
+              className="text-sm font-medium text-slate-600 hover:text-teal-600 py-2"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Blog
+            </Link>
+            <Link
+              href="/resources"
+              className="text-sm font-medium text-slate-600 hover:text-teal-600 py-2"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Resources
+            </Link>
             <Link
               href="/login"
               className="

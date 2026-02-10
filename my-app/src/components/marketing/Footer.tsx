@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { Twitter, Linkedin, Github } from 'lucide-react';
+import { Logo } from '@/components/Logo';
 
 export function Footer() {
   return (
@@ -10,11 +11,8 @@ export function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center">
-                <span className="text-white font-bold text-sm">S</span>
-              </div>
-              <span className="font-semibold text-slate-900">SlideTheory</span>
+            <div className="mb-4">
+              <Logo size="sm" showText={true} variant="dark" />
             </div>
             <p className="text-sm text-slate-500">
               AI-powered slide generation for strategy consultants.

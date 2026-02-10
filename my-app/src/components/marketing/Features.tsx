@@ -51,8 +51,8 @@ const features = [
   },
   {
     icon: <Shield className="w-6 h-6" />,
-    title: 'Enterprise Security',
-    description: 'Your client data stays protected with SOC 2 compliant infrastructure. End-to-end encryption and strict access controls.',
+    title: 'Bank-Grade Security',
+    description: 'Your data is automatically deleted after slide generation. We anonymize company names & contacts before processing. Zero data retention with optional immediate purge.',
     iconColor: 'teal' as const,
   },
   {

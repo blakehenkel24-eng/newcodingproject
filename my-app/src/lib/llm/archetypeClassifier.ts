@@ -149,11 +149,47 @@ function mapToExecutiveSummary(
   structured: StructuredContent,
   base: TemplateProps
 ): TemplateProps {
-  const points = structured.logicalGroups.map((group, index) => ({
+  let points = (structured.logicalGroups || []).map((group, index) => ({
     title: group.heading,
-    description: group.bullets.join(' '),
+    description: (group.bullets || []).join(' '),
     highlight: group.emphasis === 'high' || index === 0,
   }));
+
+  // Fallback: if no points from logicalGroups, create from coreMessage
+  if (points.length === 0 && structured.coreMessage) {
+    points = [{
+      title: 'Key Insight',
+      description: structured.coreMessage,
+      highlight: true,
+    }];
+  }
+
+  // Second fallback: create from supportingEvidence
+  if (points.length === 0 && structured.supportingEvidence && structured.supportingEvidence.length > 0) {
+    points = structured.supportingEvidence.slice(0, 4).map((evidence, index) => ({
+      title: index === 0 ? 'Key Points' : `Point ${index + 1}`,
+      description: evidence,
+      highlight: index === 0,
+    }));
+  }
+
+  // Final fallback: create from dataPoints
+  if (points.length === 0 && structured.dataPoints && structured.dataPoints.length > 0) {
+    points = structured.dataPoints.slice(0, 4).map((dp, index) => ({
+      title: dp.label,
+      description: `${dp.value}${dp.unit || ''}${dp.context ? ` (${dp.context})` : ''}`,
+      highlight: index === 0,
+    }));
+  }
+
+  // Last resort fallback
+  if (points.length === 0) {
+    points = [{
+      title: 'Overview',
+      description: 'See detailed analysis in supporting materials',
+      highlight: true,
+    }];
+  }
 
   // Add data points as a visual element if available
   const hasMetrics = structured.dataPoints.length > 0;

@@ -15,7 +15,7 @@ export function Pricing() {
       yearlyPrice: 0,
       features: [
         '5 slides per day',
-        'All 10+ templates',
+        'Base templates',
         'Copy to clipboard',
         'Email support',
       ],
@@ -28,12 +28,10 @@ export function Pricing() {
       monthlyPrice: 12,
       yearlyPrice: 10,
       features: [
-        'Unlimited slides',
-        'All templates',
+        'Unlimited AI slide generation',
+        'Exclusive MBB templates',
         'PPTX export',
         'Priority support',
-        'Team collaboration',
-        'Custom branding',
       ],
       cta: 'Start Free Trial',
       popular: true,

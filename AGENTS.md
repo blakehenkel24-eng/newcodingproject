@@ -51,6 +51,8 @@ my-app/
 │   ├── app/                    # Next.js App Router
 │   │   ├── api/                # API routes
 │   │   │   ├── auth/callback/  # OAuth callback handler
+│   │   │   ├── confirm-test-user/  # Test user confirmation endpoint
+│   │   │   ├── export/pptx/    # PPTX export endpoint
 │   │   │   ├── generate-slide/ # Main slide generation endpoint
 │   │   │   └── leads/capture/  # Lead capture for marketing
 │   │   ├── blog/               # Blog listing and posts
@@ -61,6 +63,7 @@ my-app/
 │   │   ├── reset-password/     # Password reset confirmation
 │   │   ├── onboarding/         # User onboarding flow
 │   │   ├── resources/          # Resource downloads page
+│   │   ├── security/           # Security settings page
 │   │   ├── layout.tsx          # Root layout
 │   │   ├── page.tsx            # Landing page
 │   │   └── globals.css         # Global styles
@@ -71,6 +74,7 @@ my-app/
 │   │   ├── templates/          # Slide template components (10 templates)
 │   │   ├── ExportButtons.tsx   # Copy/PPTX export buttons
 │   │   ├── InputPanel.tsx      # Main input form component
+│   │   ├── Logo.tsx            # Logo component
 │   │   ├── SlideHistory.tsx    # Slide history sidebar
 │   │   └── SlidePreview.tsx    # Slide preview wrapper
 │   ├── content/
@@ -78,37 +82,51 @@ my-app/
 │   │   └── resources/          # Resource JSON files
 │   ├── lib/
 │   │   ├── llm/                # LLM pipeline logic
-│   │   │   ├── structurer.ts   # Phase 1: content structuring with OpenAI/Gemini
-│   │   │   ├── layoutSelector.ts  # Phase 2: template selection & props mapping
-│   │   │   └── prompts.ts      # System prompts + few-shot examples
+│   │   │   ├── archetypeClassifier.ts  # Archetype classification logic
+│   │   │   ├── archetypes.ts   # 18 slide archetype definitions
+│   │   │   ├── contentAnalyzer.ts      # Stage 1: Content analysis with OpenAI/Gemini
+│   │   │   ├── layoutSelector.ts       # Phase 2: template selection & props mapping (legacy)
+│   │   │   ├── pipeline.ts     # Main 5-stage orchestration
+│   │   │   ├── prompts.ts      # System prompts + few-shot examples (legacy)
+│   │   │   ├── qualityAssurance.ts     # Stage 5: QA validation
+│   │   │   └── structurer.ts   # Legacy content structuring
 │   │   ├── supabase/           # Supabase client configurations
 │   │   │   ├── client.ts       # Browser client
 │   │   │   ├── server.ts       # Server client
 │   │   │   └── middleware.ts   # Auth middleware
+│   │   ├── security/           # Data privacy and security module
+│   │   │   ├── anonymizer.ts   # PII anonymization
+│   │   │   ├── dataLifecycle.ts # Data retention and deletion
+│   │   │   ├── piiDetector.ts  # Entity and PII detection
+│   │   │   └── index.ts        # Security module exports
 │   │   ├── supabase.ts         # Legacy supabase client + lead capture
 │   │   ├── content.ts          # Content loading utilities for blog/resources
-│   │   ├── email-service.ts    # Email service integration (SendGrid/Mailchimp)
+│   │   ├── email-service.ts    # Email service integration
 │   │   ├── export/             # Export functionality
 │   │   │   ├── clipboard.ts    # html2canvas clipboard copy
-│   │   │   └── pptxExport.ts   # pptxgenjs PPTX export
+│   │   │   ├── pptxExport.ts   # Client-side PPTX export
+│   │   │   └── pptxGenerator.ts # Server-side PPTX generation
 │   │   ├── parsers/            # File parsers (CSV, Excel, JSON)
 │   │   │   └── index.ts
 │   │   └── rateLimit.ts        # Rate limiting logic (5/day free tier)
 │   ├── types/
-│   │   ├── slide.ts            # SlideBlueprint, SlideContent types
+│   │   ├── slide.ts            # SlideBlueprint, SlideContent, TemplateProps types
 │   │   └── input.ts            # Form input types
-│   └── styles/                 # Additional styles (empty)
+│   └── middleware.ts           # Next.js middleware for auth
 ├── supabase/
 │   └── migrations/             # SQL migrations
 │       ├── 001_initial_schema.sql
-│       └── 002_create_leads_table.sql
+│       ├── 002_create_leads_table.sql
+│       └── 003_add_test_user.sql
+├── docs/
+│   └── SECURITY_ARCHITECTURE.md # Security architecture documentation
 ├── public/                     # Static assets
 ├── .env.local                  # Environment variables
 ├── next.config.js              # Next.js configuration
 ├── tailwind.config.js          # Tailwind configuration
 ├── tsconfig.json               # TypeScript configuration
 ├── package.json
-└── middleware.ts               # Next.js middleware for auth
+└── .eslintrc.json              # ESLint configuration
 ```
 
 ---
@@ -157,9 +175,6 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 # Email Service (Optional - for lead capture)
 EMAIL_PROVIDER=sendgrid  # or 'mailchimp' or 'none'
 SENDGRID_API_KEY=...
-MAILCHIMP_API_KEY=...
-MAILCHIMP_SERVER_PREFIX=us1
-MAILCHIMP_LIST_ID=...
 FROM_EMAIL=hello@slidetheory.com
 FROM_NAME=SlideTheory
 ```
@@ -182,7 +197,7 @@ Extends Supabase auth.users with app-specific data.
 | created_at | TIMESTAMPTZ | default now() |
 | daily_generation_count | INTEGER | default 0 |
 | last_generation_date | DATE | nullable |
-| tier | TEXT | default 'free' (future: 'pro', 'enterprise') |
+| tier | TEXT | default 'free' (future: 'pro', 'enterprise', 'test') |
 
 #### `slides`
 
@@ -196,15 +211,15 @@ Stores every generated slide for analytics, regeneration, and history.
 | message_input | TEXT | the takeaway message |
 | data_input | TEXT | nullable (pasted data/metrics) |
 | file_input_url | TEXT | nullable (URL to uploaded file in storage) |
-| slide_type | TEXT | auto, executive_summary, horizontal_flow, etc. |
+| slide_type | TEXT | auto, executive_summary, etc. |
 | target_audience | TEXT | c_suite, pe_investors, external_client, internal_team |
 | density_mode | TEXT | presentation, read_style |
 | llm_blueprint | JSONB | structured output from Phase 1 LLM |
-| selected_template | TEXT | which React template was chosen |
+| selected_template | TEXT | which archetype/template was chosen |
 | template_props | JSONB | final props passed to React template |
 | feedback | TEXT | nullable ('thumbs_up', 'thumbs_down') |
 | regeneration_count | INTEGER | default 0 |
-| llm_model_used | TEXT | e.g., 'gpt-4o', 'gemini-2.0-flash' |
+| llm_model_used | TEXT | e.g., 'gpt-4o', 'gemini-2.0-flash-exp' |
 | generation_time_ms | INTEGER | |
 | created_at | TIMESTAMPTZ | default now() |
 
@@ -247,7 +262,7 @@ Stores email subscribers and resource downloaders for marketing.
 ### React Components
 
 - Use functional components with hooks
-- 'use client' directive for client components (forms, animations)
+- `'use client'` directive for client components (forms, animations, dropzones)
 - Server components by default (Next.js App Router)
 - Props interfaces defined inline or in types file
 
@@ -260,7 +275,7 @@ Stores email subscribers and resource downloaders for marketing.
 
 ### Tailwind CSS
 
-- Use Tailwind utility classes exclusively (no custom CSS)
+- Use Tailwind utility classes exclusively (no custom CSS except in globals.css)
 - Custom colors defined in `tailwind.config.js`:
   - Primary: Teal palette (`teal-500` = `#14B8A6`)
   - Accent: Orange palette (`orange-500` = `#F97316`)
@@ -290,7 +305,7 @@ Main endpoint for slide generation. Protected by auth and rate limiting.
   message: string;        // Key takeaway message
   data?: string;          // Optional structured data
   fileContent?: string;   // Optional parsed file content
-  slideType: SlideType;   // 'auto' or specific template
+  slideType: SlideType;   // 'auto' or specific archetype
   audience: TargetAudience;
   density: DensityMode;
   isRegeneration?: boolean;
@@ -301,13 +316,27 @@ Main endpoint for slide generation. Protected by auth and rate limiting.
 ```typescript
 {
   slideId: string;
-  templateId: string;
-  props: Record<string, unknown>;
-  blueprint: SlideBlueprint;
+  archetypeId: ArchetypeId;
+  templateId: string;     // For backward compatibility
+  props: TemplateProps;
+  structured: StructuredContent;
+  blueprint: SlideBlueprint;  // For backward compatibility
   generationTimeMs: number;
   remainingGenerations: number;
+  modelUsed: string;
+  qaScore: number;
+  qaPassed: boolean;
+  qaRecommendations?: string[];
 }
 ```
+
+### GET `/api/generate-slide`
+
+Retrieves slide history for the authenticated user.
+
+**Query Parameters:**
+- `limit`: Number of slides to return (default: 10)
+- `offset`: Pagination offset (default: 0)
 
 ### POST `/api/leads/capture`
 
@@ -329,6 +358,10 @@ Captures lead information from email gates on resources.
 }
 ```
 
+### POST `/api/export/pptx`
+
+Generates PPTX file from slide data.
+
 ### Auth Callback: `/api/auth/callback`
 
 Handles OAuth callbacks from Supabase Auth.
@@ -337,27 +370,91 @@ Handles OAuth callbacks from Supabase Auth.
 
 ## LLM Pipeline Architecture
 
-### Phase 1: Content Structurer (`lib/llm/structurer.ts`)
+The slide generation uses a 5-stage pipeline orchestrated in `lib/llm/pipeline.ts`:
+
+### Stage 1: Content Analysis (`lib/llm/contentAnalyzer.ts`)
 
 **Model:** GPT-4o with JSON mode (or Gemini 2.0 Flash as fallback)
 
-**Purpose:** Parse unstructured user input into a structured `SlideBlueprint`.
+**Purpose:** Parse unstructured user input into a structured `StructuredContent` object.
 
 **Key Principles:**
 - **Pyramid Principle**: Main Point → Supporting Arguments → Data
-- **Action Titles**: Title must state the key takeaway/insight (not just topic)
+- **Action Titles**: Title must follow `[WHAT] + [SO WHAT] + [NOW WHAT]` formula
 - **MECE**: Mutually Exclusive, Collectively Exhaustive structure
+- Maximum 4 logical groups, 5 bullets per group
 
-**Output:** `SlideBlueprint` object with slideTitle, keyMessage, contentBlocks, suggestedLayout, footnote, source.
+**Output:** `StructuredContent` with:
+- `coreMessage`: The single most important insight
+- `contentType`: classification (comparison, trend, process, etc.)
+- `dataPoints`: Array of metrics with context
+- `logicalGroups`: MECE-structured bullet groups
+- `recommendedArchetype`: Suggested slide type
+- `complexityScore`: 1-5 rating
+- `title`: Action-oriented slide title
 
-### Phase 2: Layout Selector (`lib/llm/layoutSelector.ts`)
+### Stage 2: Archetype Classification (`lib/llm/archetypeClassifier.ts`)
 
-**Purpose:** Map `SlideBlueprint` to exact props for React slide template components.
+**Purpose:** Map `StructuredContent` to exact props for React slide template components.
 
 **Logic:**
-- If `slideType` is "auto", select best template based on content structure
-- If `slideType` is specified, use that template
+- If `slideType` is "auto", select best archetype based on content structure
+- If `slideType` is specified, use that archetype
 - Transform `contentBlocks` into template-specific props
+
+### Stage 3: Content Validation
+
+Pre-flight check for overflow and quality issues using `validateContentFit()`.
+
+### Stage 5: Quality Assurance (`lib/llm/qualityAssurance.ts`)
+
+**Purpose:** Validate generated slides against consulting quality standards.
+
+**Checks:**
+- Title quality (length, insight, action verbs, numbers)
+- Content structure (group count, bullets per group, MECE)
+- Archetype fit (complexity match, data sufficiency)
+- Data integrity (source attribution, formatting consistency)
+
+**Output:** `QAReport` with score (0-100), pass/fail status, and recommendations.
+
+---
+
+## Slide Archetypes (18 Types)
+
+All archetypes defined in `lib/llm/archetypes.ts`:
+
+### Insight & Summary
+1. **executive_summary** — Single key finding with 3-4 supporting evidence points
+2. **situation_complication_resolution** — SCR framework for problem framing
+
+### Comparison & Analysis
+3. **two_by_two_matrix** — 2x2 matrix for portfolio prioritization
+4. **comparison_table** — Side-by-side option evaluation
+5. **before_after** — Current vs future state transformation
+
+### Data & Metrics
+6. **kpi_dashboard** — 3-5 large metric callouts
+7. **waterfall_chart** — Financial bridge/variance analysis
+8. **trend_line** — Time-series data
+9. **stacked_bar** — Composition breakdown
+
+### Process & Flow
+10. **process_flow** — Sequential steps (3-6)
+11. **timeline_swimlane** — Multi-workstream roadmap
+12. **decision_tree** — Branching logic/scenarios
+
+### Structure & Hierarchy
+13. **issue_tree** — Problem decomposition (MECE)
+14. **three_pillar** — Three parallel themes
+15. **grid_cards** — 2x2 or 2x3 capability grid
+
+### Market & Financial
+16. **market_sizing** — TAM/SAM/SOM analysis
+17. **competitive_landscape** — Positioning map
+
+### Navigation
+18. **agenda_divider** — Section divider or TOC
 
 ---
 
@@ -369,24 +466,56 @@ All templates render at 16:9 aspect ratio (1920×1080 reference) with these desi
 - **Whitespace:** Generous padding, clear visual hierarchy
 - **Frameworks:** Bold labels, supporting text, data-driven insights
 
-### Available Templates
+### Available Templates (in `components/templates/`)
 
-1. **ExecutiveSummary** (`templates/ExecutiveSummary.tsx`) - Opening/closing section overviews with 2-4 key points, animated with Framer Motion
-2. **HorizontalFlow** (`templates/HorizontalFlow.tsx`) - Process, timeline, or sequential steps (3-6 steps)
-3. **TwoByTwoMatrix** (`templates/TwoByTwoMatrix.tsx`) - 2×2 grids (e.g., Impact vs. Effort)
-4. **ComparisonTable** (`templates/ComparisonTable.tsx`) - Side-by-side comparison of 2-4 options
-5. **DataChart** (`templates/DataChart.tsx`) - Bar/line charts with 1 key takeaway
-6. **MultiMetric** (`templates/MultiMetric.tsx`) - Dashboard-style with 3-6 key numbers
-7. **IssueTree** (`templates/IssueTree.tsx`) - Hierarchical breakdown (problem → causes)
-8. **Timeline** (`templates/Timeline.tsx`) - Calendar/time-based view with milestones
-9. **GraphChart** (`templates/GraphChart.tsx`) - Node/edge relationship diagrams
-10. **General** (`templates/General.tsx`) - Flexible fallback for unstructured content
+1. **ExecutiveSummary** — Opening/closing section overviews with 2-4 key points
+2. **HorizontalFlow** — Process, timeline, or sequential steps (3-6 steps)
+3. **TwoByTwoMatrix** — 2×2 grids (e.g., Impact vs. Effort)
+4. **ComparisonTable** — Side-by-side comparison of 2-4 options
+5. **DataChart** — Bar/line charts with 1 key takeaway
+6. **MultiMetric** — Dashboard-style with 3-6 key numbers
+7. **IssueTree** — Hierarchical breakdown (problem → causes)
+8. **Timeline** — Calendar/time-based view with milestones
+9. **GraphChart** — Node/edge relationship diagrams
+10. **General** — Flexible fallback for unstructured content
+
+---
+
+## Security & Data Privacy
+
+### PII Detection and Anonymization (`lib/security/`)
+
+The application includes a comprehensive security module:
+
+**PII Detection (`piiDetector.ts`):**
+- Detects company names, person names, emails, phones, financial figures
+- Uses regex patterns and known entity dictionaries
+- Calculates risk scores (0-100)
+
+**Anonymization (`anonymizer.ts`):**
+- Replaces sensitive entities with placeholders
+- Preserves financial figures (essential for consulting slides)
+- Configurable anonymization levels: 'light', 'medium', 'strict'
+
+**Data Lifecycle (`dataLifecycle.ts`):**
+- Automatic data deletion scheduling
+- Configurable retention policies: 'immediate', '5minutes', '1hour', '1day', '30days'
+
+### Security Principles
+
+1. **Privacy by Design**: Data minimization, purpose limitation, short retention
+2. **Defense in Depth**: Multiple layers of protection from ingestion to storage
+3. **Zero Data Retention (ZDR)**: No data retained by LLM providers
+
+For detailed security architecture, see `docs/SECURITY_ARCHITECTURE.md`.
 
 ---
 
 ## Rate Limiting
 
 Free tier: 5 slides per day per user (resets at midnight UTC, based on `last_generation_date`).
+
+Test users (emails: `test@slidetheory.com`, `admin@slidetheory.com`, `demo@slidetheory.com`) bypass rate limits.
 
 **Implementation:** `lib/rateLimit.ts`
 
@@ -424,7 +553,7 @@ Parsed data is formatted as tab-separated values for LLM consumption (limited to
 
 Uses html2canvas to render the slide DOM element to a canvas, then copies as PNG to clipboard.
 
-### PPTX Export (`lib/export/pptxExport.ts`)
+### PPTX Export (`lib/export/pptxExport.ts`, `lib/export/pptxGenerator.ts`)
 
 Uses pptxgenjs to create a PowerPoint file. Dynamically imports on client-side only to avoid SSR issues.
 
@@ -445,7 +574,8 @@ Content is stored as JSON files in `src/content/blog/` and `src/content/resource
   "readTime": "5 min read",
   "category": "Category",
   "tags": ["tag1", "tag2"],
-  "featured": false
+  "featured": false,
+  "coverImage": "/images/blog/cover.jpg"
 }
 ```
 
@@ -485,22 +615,10 @@ npm install -D jest @testing-library/react @testing-library/jest-dom @testing-li
 ```
 
 Recommended test structure:
-- Unit tests for `lib/llm/structurer.ts` and `lib/llm/layoutSelector.ts`
+- Unit tests for `lib/llm/contentAnalyzer.ts` and `lib/llm/archetypeClassifier.ts`
 - Component tests for slide templates
 - Integration tests for `/api/generate-slide`
 - E2E tests for critical user flows (signup → generate slide → export)
-
----
-
-## Security Considerations
-
-1. **API Keys:** All LLM API keys are server-side only (never exposed to client)
-2. **Authentication:** All API routes validate Supabase session before processing
-3. **Input Sanitization:** Strip HTML from all text inputs before sending to LLM
-4. **File Uploads:** 5MB max size limit, restricted file types
-5. **Rate Limiting:** Enforced server-side (not client-side)
-6. **Prompt Injection Defense:** System prompt includes instructions to ignore user attempts to override prompts
-7. **Row Level Security:** RLS enabled on all tables with user-specific policies
 
 ---
 
@@ -517,9 +635,10 @@ Recommended test structure:
 ### Supabase Setup
 
 1. Create project in Supabase dashboard
-2. Run SQL migrations in Supabase SQL editor:
+2. Run SQL migrations in Supabase SQL Editor:
    - `supabase/migrations/001_initial_schema.sql`
    - `supabase/migrations/002_create_leads_table.sql`
+   - `supabase/migrations/003_add_test_user.sql`
 3. Enable Email Auth in Supabase Auth settings
 4. Configure email templates for auth emails
 5. Enable RLS on all tables
@@ -530,17 +649,25 @@ Recommended test structure:
 
 ### Slide Types
 ```typescript
-type SlideType = 
-  | 'auto'
+type ArchetypeId = 
   | 'executive_summary'
-  | 'horizontal_flow'
+  | 'situation_complication_resolution'
   | 'two_by_two_matrix'
   | 'comparison_table'
-  | 'data_chart'
-  | 'multi_metric'
+  | 'before_after'
+  | 'kpi_dashboard'
+  | 'waterfall_chart'
+  | 'trend_line'
+  | 'stacked_bar'
+  | 'process_flow'
+  | 'timeline_swimlane'
+  | 'decision_tree'
   | 'issue_tree'
-  | 'timeline'
-  | 'graph_chart';
+  | 'three_pillar'
+  | 'grid_cards'
+  | 'market_sizing'
+  | 'competitive_landscape'
+  | 'agenda_divider';
 ```
 
 ### Target Audiences
@@ -563,18 +690,19 @@ type DensityMode = 'presentation' | 'read_style';
 
 1. **This project specification lives in `AGENTS.md`** — refer to it for architecture, patterns, and conventions.
 
-2. **The LLM system prompts** in `lib/llm/prompts.ts` include critical instructions for output format. Do not modify them without understanding the downstream parsing logic.
+2. **The LLM system prompts** in `lib/llm/contentAnalyzer.ts` include critical instructions for output format. Do not modify them without understanding the downstream parsing logic.
 
 3. **All slide templates must maintain exact 16:9 aspect ratio** for consistent export behavior. Use `aspect-video` Tailwind class.
 
 4. **The fallback LLM (Gemini)** should only be used when OpenAI calls fail — maintain GPT-4o as primary.
 
 5. **When implementing new slide templates**, follow the existing component pattern:
-   - Accept typed props interface
+   - Accept typed props interface extending `BaseTemplateProps`
    - Render with Tailwind classes
    - Support both `presentation` and `read_style` density modes
    - Use Framer Motion for entrance animations
    - Include footnote/source display at bottom
+   - Export archetype definition in `lib/llm/archetypes.ts`
 
 6. **Path aliases:** Use `@/` prefix for imports from `src/` (e.g., `import { Button } from '@/components/Button'`)
 
@@ -584,6 +712,7 @@ type DensityMode = 'presentation' | 'read_style';
      - Browser APIs (window, document, localStorage)
      - Framer Motion components
      - Event handlers (onClick, onSubmit, etc.)
+     - react-dropzone for file uploads
    - Keep Server Components (default) for:
      - Data fetching
      - Static content
@@ -597,3 +726,19 @@ type DensityMode = 'presentation' | 'read_style';
 9. **Database changes:** Always update both:
    - The TypeScript types in `src/types/`
    - The SQL migration files in `supabase/migrations/`
+
+10. **MECE Principle:** When structuring content, ensure logical groups are:
+    - **M**utually **E**xclusive (no overlap between groups)
+    - **C**ollectively **E**xhaustive (no gaps, covers all content)
+    - Target 3-4 groups maximum
+    - Maximum 5 bullets per group
+
+11. **Action Title Formula:** All slide titles should follow:
+    `[WHAT happened] + [SO WHAT it means] + [NOW WHAT to do]`
+    Example: "Revenue declined 12% in Q3 driven by mid-market churn, requiring immediate retention intervention"
+
+12. **Security considerations:**
+    - Always use the security module for PII detection before sending data to LLMs
+    - Respect data retention policies
+    - Never log sensitive user data
+    - API keys must remain server-side only

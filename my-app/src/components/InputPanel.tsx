@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { SlideType, TargetAudience, DensityMode, SlideData, getArchetypeOptions } from '@/types/slide';
 import { parseFile, formatParsedDataForLLM } from '@/lib/parsers';
-import { FileText, Upload, Loader2, Wand2, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
+import { FileText, Upload, Loader2, Wand2, ChevronDown, ChevronUp, Sparkles, Shield, Lock, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface InputPanelProps {
@@ -100,6 +100,12 @@ export function InputPanel({ onSlideGenerated, remainingGenerations }: InputPane
       }
 
       const slideData: SlideData = await response.json();
+      
+      // Debug logging
+      console.log('[SlideGenerator] Response:', slideData);
+      console.log('[SlideGenerator] Logical groups:', slideData.structured?.logicalGroups);
+      console.log('[SlideGenerator] Template props:', slideData.props);
+      
       onSlideGenerated(slideData);
       
       // Show QA feedback
@@ -130,9 +136,16 @@ export function InputPanel({ onSlideGenerated, remainingGenerations }: InputPane
   return (
     <div className="p-4 space-y-4">
       {/* Header */}
-      <div className="flex items-center space-x-2 text-teal-600">
-        <Sparkles className="w-4 h-4" />
-        <span className="text-xs font-medium uppercase tracking-wide">AI-Powered Generation</span>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2 text-teal-600">
+          <Sparkles className="w-4 h-4" />
+          <span className="text-xs font-medium uppercase tracking-wide">AI-Powered Generation</span>
+        </div>
+        {/* Security Badge */}
+        <div className="flex items-center gap-1.5 px-2 py-1 bg-green-50 rounded-full border border-green-200">
+          <Lock className="w-3 h-3 text-green-600" />
+          <span className="text-xs font-medium text-green-700">Secure & Private</span>
+        </div>
       </div>
 
       {/* Context */}
@@ -201,10 +214,10 @@ export function InputPanel({ onSlideGenerated, remainingGenerations }: InputPane
       {/* Options Toggle */}
       <button
         onClick={() => setShowOptions(!showOptions)}
-        className="flex items-center text-xs text-gray-500 hover:text-gray-700"
+        className="flex items-center text-sm text-slate-600 hover:text-slate-900 font-medium"
       >
-        {showOptions ? <ChevronUp className="w-3.5 h-3.5 mr-1" /> : <ChevronDown className="w-3.5 h-3.5 mr-1" />}
-        Options
+        {showOptions ? <ChevronUp className="w-4 h-4 mr-1.5" /> : <ChevronDown className="w-4 h-4 mr-1.5" />}
+        Advanced Options
       </button>
 
       {/* Options */}
@@ -266,6 +279,15 @@ export function InputPanel({ onSlideGenerated, remainingGenerations }: InputPane
         </div>
       )}
 
+      {/* Security Notice */}
+      <div className="flex items-start gap-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
+        <Shield className="w-4 h-4 text-teal-600 flex-shrink-0 mt-0.5" />
+        <div className="text-xs text-slate-600 leading-relaxed">
+          <strong className="text-slate-900">Your data is secure:</strong> Company names & contacts are anonymized before processing. All data is automatically deleted after generation. 
+          <a href="/security" target="_blank" className="text-teal-600 hover:underline ml-1">Learn more</a>
+        </div>
+      </div>
+
       {/* Generate Button */}
       <button
         onClick={handleGenerate}
@@ -275,7 +297,7 @@ export function InputPanel({ onSlideGenerated, remainingGenerations }: InputPane
         {isGenerating ? (
           <>
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Generating...
+            Generating securely...
           </>
         ) : (
           <>

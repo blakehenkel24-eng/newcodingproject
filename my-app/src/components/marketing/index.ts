@@ -2,6 +2,7 @@ export { Navbar } from './Navbar';
 export { Hero } from './Hero';
 export { HowItWorks } from './HowItWorks';
 export { Features } from './Features';
+export { SecuritySection } from './SecuritySection';
 export { Pricing } from './Pricing';
 export { Testimonials } from './Testimonials';
 export { CTASection } from './CTASection';

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import toast from 'react-hot-toast';
+import { Logo } from '@/components/Logo';
 
 interface FormErrors {
   email?: string;
@@ -57,9 +58,30 @@ function LoginForm() {
         if (error.message.includes('Invalid login credentials')) {
           setErrors({ general: 'Invalid email or password. Please try again.' });
         } else if (error.message.includes('Email not confirmed')) {
-          setErrors({ 
-            general: 'Please verify your email address before signing in. Check your inbox for the verification link.' 
-          });
+          // Check if this is a test email
+          const testEmails = ['test@slidetheory.com', 'admin@slidetheory.com', 'demo@slidetheory.com'];
+          if (testEmails.includes(email.toLowerCase())) {
+            setErrors({ 
+              general: (
+                <div className="text-left">
+                  <p className="font-semibold mb-2">Test user email not confirmed</p>
+                  <p className="text-sm mb-2">Since this is a test email, you need to manually confirm it in Supabase:</p>
+                  <ol className="text-sm list-decimal list-inside space-y-1">
+                    <li>Go to Supabase Dashboard</li>
+                    <li>Authentication → Users</li>
+                    <li>Find <strong>{email}</strong></li>
+                    <li>Click the user row</li>
+                    <li>Toggle &ldquo;Email confirmed&rdquo; or click &ldquo;Confirm email&rdquo;</li>
+                  </ol>
+                  <p className="text-sm mt-2 text-gray-500">Alternative: Use your real email for testing (5 slides/day limit)</p>
+                </div>
+              ) as unknown as string
+            });
+          } else {
+            setErrors({ 
+              general: 'Please verify your email address before signing in. Check your inbox for the verification link.' 
+            });
+          }
         } else {
           setErrors({ general: error.message });
         }
@@ -101,20 +123,8 @@ function LoginForm() {
       <div className="max-w-md w-full space-y-8">
         {/* Logo and Header */}
         <div className="text-center">
-          <div className="mx-auto h-16 w-16 bg-navy rounded-xl flex items-center justify-center shadow-lg mb-6">
-            <svg
-              className="h-10 w-10 text-white"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              />
-            </svg>
+          <div className="flex justify-center mb-6">
+            <Logo size="lg" showText={false} />
           </div>
           <h1 className="text-3xl font-bold text-navy tracking-tight">
             Welcome back

@@ -4,6 +4,7 @@ import {
   Hero, 
   HowItWorks, 
   Features, 
+  SecuritySection,
   Pricing, 
   Testimonials, 
   CTASection, 
@@ -23,6 +24,7 @@ export default function LandingPage() {
       <Hero />
       <HowItWorks />
       <Features />
+      <SecuritySection />
       <Testimonials />
       <Pricing />
       <CTASection />
