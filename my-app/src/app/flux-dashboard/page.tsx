@@ -229,15 +229,9 @@ export default function FluxDashboardPage() {
           </span>
         </div>
         <div className="flex items-center space-x-3">
-          <a
-            href="/dashboard"
-            className="flex items-center gap-1.5 text-sm text-teal-600 hover:text-teal-700 px-3 py-1.5 rounded-md hover:bg-teal-50 transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            HTML Slides
-          </a>
+          <span className="px-2 py-0.5 text-xs bg-amber-100 text-amber-700 rounded-full font-medium">
+            INTERNAL TESTING
+          </span>
           <div className="w-px h-4 bg-gray-300" />
           {isTestUser ? (
             <span className="px-2 py-0.5 text-xs bg-purple-100 text-purple-700 rounded-full font-medium">
@@ -261,6 +255,15 @@ export default function FluxDashboardPage() {
           style={{ width: sidebarWidth }}
         >
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            {/* Internal Testing Notice */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-xs text-amber-800">
+                <strong>Internal Testing Only</strong><br />
+                This Flux 2.0 feature is for A/B testing. Compare outputs with the 
+                <a href="/dashboard" className="underline hover:text-amber-900">main dashboard</a>.
+              </p>
+            </div>
+
             {/* Context Input */}
             <div>
               <label className="block text-sm font-semibold text-slate-900 mb-2">
