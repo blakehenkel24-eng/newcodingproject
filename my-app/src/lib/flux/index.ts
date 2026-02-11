@@ -14,6 +14,16 @@ export type {
 
 export { FLUX_ARCHETYPE_CONFIGS } from './types';
 
+// Configuration
+export {
+  validateFluxConfig,
+  getFluxConfig,
+  isFluxConfigured,
+  getFluxModels,
+  getProviderParams,
+  getConfigHelp,
+} from './config';
+
 // Prompt Builder
 export {
   buildFluxPrompt,
@@ -24,9 +34,7 @@ export {
 // Image Generator
 export {
   generateFluxImage,
-  generateFluxVariations,
-  isFluxConfigured,
-  getFluxModels,
+  FluxGenerationError,
 } from './imageGenerator';
 
 // Pipeline
@@ -36,3 +44,11 @@ export {
   runFluxQuickGenerate,
   regenerateFluxSlide,
 } from './pipeline';
+
+// Export utilities
+export {
+  exportFluxToPPTX,
+  exportFluxBatchToPPTX,
+  downloadFluxImage,
+  copyFluxImageToClipboard,
+} from './export';

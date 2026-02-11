@@ -156,8 +156,6 @@ export async function runFluxPipelineWithVariations(
         structured.logicalGroups
       );
   
-  const style = detectStyleFromInput(input.text) || 'mckinsey';
-  
   // Generate variations with different seeds
   const promises = Array.from({ length: variationCount }, async (_, i) => {
     const startTime = Date.now();
@@ -172,7 +170,6 @@ export async function runFluxPipelineWithVariations(
         archetypeId,
         audience: input.audience,
         density: input.density,
-        style,
       });
       
       const enhancedPrompt = enhancePromptWithTextElements(prompt, structured);
@@ -205,14 +202,13 @@ export async function runFluxPipelineWithVariations(
  */
 export async function runFluxQuickGenerate(
   title: string,
-  archetypeId: ArchetypeId,
-  style: 'mckinsey' | 'bcg' | 'bain' | 'modern' = 'mckinsey'
+  archetypeId: ArchetypeId
 ): Promise<FluxPipelineResult> {
   const startTime = Date.now();
   
   try {
     const { buildQuickPrompt } = await import('./promptBuilder');
-    const prompt = buildQuickPrompt(title, archetypeId, style);
+    const prompt = buildQuickPrompt(title, archetypeId);
     
     const result = await generateFluxImage(prompt, archetypeId);
     
@@ -267,15 +263,12 @@ export async function regenerateFluxSlide(
           structured.logicalGroups
         ));
   
-  const style = modifications.style || detectStyleFromInput(originalInput.text) || 'mckinsey';
-  
   // Build and generate
   const prompt = buildFluxPrompt({
     structured,
     archetypeId,
     audience: originalInput.audience,
     density: originalInput.density,
-    style,
   });
   
   const enhancedPrompt = enhancePromptWithTextElements(prompt, structured);
