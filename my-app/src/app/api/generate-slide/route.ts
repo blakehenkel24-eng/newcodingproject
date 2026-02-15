@@ -4,6 +4,7 @@ import { checkRateLimit, incrementGenerationCount } from '@/lib/rateLimit';
 import { executePipeline, generateSlidePPTX } from '@/lib/llm/pipeline';
 import { SlideInput } from '@/types/input';
 import { mapToArchetype } from '@/types/slide';
+import { getFluxRateLimitStatus, UserTier } from '@/lib/flux';
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
@@ -20,10 +21,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check rate limit
-    const { allowed, remaining, profile, isTestUser } = await checkRateLimit(user.id);
+    // Get user profile for tier info
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
 
-    if (!allowed) {
+    const userTier: UserTier = (profile?.tier as UserTier) || 'free';
+    const isTestUser = profile?.email?.includes('@slidetheory.com');
+
+    // Check rate limit (for free tier)
+    const { allowed, remaining } = await checkRateLimit(user.id);
+
+    if (!allowed && !isTestUser) {
       return NextResponse.json(
         { error: 'Daily generation limit reached. Upgrade to Pro for unlimited slides.' },
         { status: 429 }
@@ -51,6 +62,8 @@ export async function POST(request: NextRequest) {
         slideType: body.slideType,
         audience: body.audience,
         density: body.density,
+        userId: user.id,
+        userTier: isTestUser ? 'enterprise' : userTier,
       },
       {
         preferredModel: 'openai',
@@ -106,11 +119,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       slideId: pipelineResult.slideId,
       archetypeId: pipelineResult.archetypeId,
-      templateId: pipelineResult.archetypeId, // For backward compatibility
+      templateId: pipelineResult.archetypeId,
       props: pipelineResult.templateProps,
       structured: pipelineResult.structured,
       blueprint: {
-        // For backward compatibility
         slideTitle: pipelineResult.structured.title,
         keyMessage: pipelineResult.structured.coreMessage,
         contentBlocks: pipelineResult.structured.logicalGroups.map(g => ({
@@ -129,6 +141,16 @@ export async function POST(request: NextRequest) {
       qaScore: pipelineResult.qaReport.score,
       qaPassed: pipelineResult.qaReport.passed,
       qaRecommendations: pipelineResult.qaReport.recommendations,
+      // Flux blueprint (LLM-generated detailed prompt)
+      fluxBlueprint: pipelineResult.fluxBlueprint || null,
+      // Flux image result
+      imageUrl: pipelineResult.imageResult?.imageUrl || null,
+      imageGenerationTimeMs: pipelineResult.imageResult?.generationTimeMs || null,
+      imagePrompt: pipelineResult.imageResult?.imagePrompt || null,
+      // Text fallback for copying
+      textFallback: pipelineResult.textFallback || null,
+      // Flux rate limit info
+      fluxRateLimit: getFluxRateLimitStatus(user.id, isTestUser ? 'enterprise' : userTier),
     });
 
   } catch (error) {

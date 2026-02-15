@@ -318,7 +318,7 @@ export const SLIDE_ARCHETYPES: Record<ArchetypeId, ArchetypeDefinition> = {
  */
 export function classifyContent(
   contentType: string,
-  dataPoints: Array<{ label: string; value: string | number }>,
+  dataPoints: Array<{ label: string; value: string | number; context?: string }>,
   userRequest?: string,
   logicalGroups?: Array<{ heading: string; bullets: string[] }>
 ): ArchetypeId {
@@ -344,7 +344,7 @@ export function classifyContent(
   );
 
   const hasComparisonWords = dataPoints.some((dp) =>
-    /\b(vs|versus|compared|difference|gap|change|increase|decrease|growth|decline)\b/i.test(String(dp.label) + ' ' + String(dp.context))
+    /\b(vs|versus|compared|difference|gap|change|increase|decrease|growth|decline)\b/i.test(String(dp.label) + ' ' + String(dp.context || ''))
   );
 
   // Time series data → trend_line

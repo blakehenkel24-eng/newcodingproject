@@ -46,7 +46,6 @@ const templateComponents: Record<string, React.FC<any>> = {
   market_sizing: ExecutiveSummary,  // Better represented as structured summary
   competitive_landscape: TwoByTwoMatrix,
   agenda_divider: General,
-  issue_tree: IssueTree,
 };
 
 /**
