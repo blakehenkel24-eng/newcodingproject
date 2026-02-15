@@ -354,6 +354,15 @@ export interface SlideData {
   qaPassed: boolean;
   qaRecommendations?: string[];
   isTestUser?: boolean;
+  // Flux image generation
+  imageUrl: string | null;
+  imageGenerationTimeMs: number | null;
+  imagePrompt?: string; // The prompt sent to Flux
+  textFallback: {
+    title: string;
+    content: string;
+    archetype: string;
+  } | null;
 }
 
 export interface SlideTemplatePropsBase {

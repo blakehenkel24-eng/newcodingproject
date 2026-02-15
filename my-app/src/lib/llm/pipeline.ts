@@ -1,6 +1,7 @@
 /**
  * SlideTheory Slide Generation Pipeline
- * 5-Stage orchestrator: Content Analysis → Archetype Classification → HTML/PPTX Generation → QA
+ * 6-Stage orchestrator: Content Analysis → Archetype Classification → Flux Blueprint Generation → Image Generation → QA
+ * Now with Flux 2.0 image generation instead of HTML rendering
  */
 
 import { analyzeContent, StructuredContent, validateMECE, LogicalGroup } from './contentAnalyzer';
@@ -9,6 +10,8 @@ import { validateSlide, QAReport, validateContentFit } from './qualityAssurance'
 import { ArchetypeId } from './archetypes';
 import { generatePPTX } from '@/lib/export/pptxGenerator';
 import { detectPII, anonymize, DataLifecycleManager, SECURE_RETENTION_CONFIG } from '@/lib/security';
+import { generateSlideImage, SlideImageResult } from '@/lib/flux';
+import { generateFluxBlueprint, generateFluxPromptFromBlueprint, FluxBlueprint } from '@/lib/fluxPromptGenerator';
 
 // === TYPES ===
 
@@ -20,6 +23,8 @@ export interface PipelineInput {
   slideType?: string;
   audience?: string;
   density?: 'presentation' | 'read_style';
+  userId?: string; // For rate limiting
+  userTier?: 'free' | 'pro' | 'enterprise'; // For rate limiting
   securityOptions?: {
     enableAnonymization?: boolean;
     anonymizationLevel?: 'light' | 'medium' | 'strict';
@@ -35,6 +40,16 @@ export interface PipelineOutput {
   qaReport: QAReport;
   generationTimeMs: number;
   modelUsed: string;
+  // Flux blueprint (LLM-generated detailed prompt)
+  fluxBlueprint?: FluxBlueprint;
+  // Flux image generation result
+  imageResult?: SlideImageResult;
+  // Text fallback for copying
+  textFallback?: {
+    title: string;
+    content: string;
+    archetype: string;
+  };
   securityInfo: {
     anonymizationApplied: boolean;
     entitiesDetected: string[];
@@ -236,10 +251,79 @@ export async function executePipeline(
     const validation = stage3_Validation(structured, classification.archetypeId);
 
     if (!validation.valid) {
-      console.log('[Pipeline] Validation warnings (continuing anyway):', validation.warnings);
+      console.log('[Pipeline] Validation warnings (continuing yet):', validation.warnings);
     }
 
-    // Stage 5: Quality Assurance (unless skipped)
+    // Stage 4: Flux Blueprint Generation (LLM-driven)
+    console.log('[Pipeline] Stage 4: Flux Blueprint Generation');
+    const blueprintStartTime = Date.now();
+    
+    let fluxBlueprint: FluxBlueprint | undefined;
+    let blueprintError: string | undefined;
+    
+    try {
+      fluxBlueprint = await generateFluxBlueprint(
+        {
+          title: structured.title,
+          coreMessage: structured.coreMessage,
+          logicalGroups: structured.logicalGroups,
+          dataPoints: structured.dataPoints,
+          recommendedArchetype: classification.archetypeId,
+          source: structured.source,
+          footnote: structured.footnote,
+        },
+        {
+          density: processedInput.density,
+          audience: processedInput.audience,
+        }
+      );
+      console.log(`[Pipeline] Blueprint generated in ${Date.now() - blueprintStartTime}ms`);
+      console.log('[Pipeline] Blueprint content type:', fluxBlueprint.content.type);
+    } catch (error) {
+      blueprintError = error instanceof Error ? error.message : 'Blueprint generation failed';
+      console.error('[Pipeline] Flux blueprint generation failed:', blueprintError);
+    }
+
+    // Stage 5: Flux Image Generation
+    console.log('[Pipeline] Stage 5: Flux Image Generation');
+    const imageStartTime = Date.now();
+    
+    // Use the LLM-generated prompt from the blueprint, or fall back to template
+    const imagePrompt = fluxBlueprint 
+      ? generateFluxPromptFromBlueprint(fluxBlueprint)
+      : `Generate a professional strategy consulting slide titled "${structured.title}". ${structured.coreMessage}`;
+
+    let imageResult: SlideImageResult | undefined;
+    let imageError: string | undefined;
+    
+    try {
+      imageResult = await generateSlideImage(imagePrompt, {
+        aspectRatio: '16:9',
+        userId: processedInput.userId,
+        tier: processedInput.userTier,
+      });
+      console.log(`[Pipeline] Image generated successfully in ${imageResult.generationTimeMs}ms`);
+    } catch (error) {
+      imageError = error instanceof Error ? error.message : 'Image generation failed';
+      console.error('[Pipeline] Flux image generation failed:', imageError);
+    }
+
+    // Build text fallback for copying (from blueprint or structured content)
+    const textFallback = {
+      title: fluxBlueprint?.title.text || structured.title,
+      content: fluxBlueprint?.content.elements
+        ?.filter(el => el.text)
+        .map(el => el.text)
+        .join('\n\n') 
+        || structured.logicalGroups.map(group => 
+          `${group.heading}:\n${group.bullets.map(b => `• ${b}`).join('\n')}`
+        ).join('\n\n'),
+      archetype: classification.archetypeId,
+    };
+
+    const imageGenerationTimeMs = Date.now() - imageStartTime;
+
+    // Stage 6: Quality Assurance (unless skipped)
     let qaReport: QAReport;
     if (!options.skipQA) {
       qaReport = stage5_QualityAssurance(
@@ -257,6 +341,9 @@ export async function executePipeline(
     }
 
     const generationTimeMs = Date.now() - pipelineStartTime;
+
+    // Include image generation time in total
+    const totalImageTime = imageResult ? imageResult.generationTimeMs : 0;
 
     // Schedule automatic data deletion
     const lifecycleManager = new DataLifecycleManager({
@@ -278,6 +365,12 @@ export async function executePipeline(
       qaReport,
       generationTimeMs,
       modelUsed,
+      fluxBlueprint,
+      imageResult: imageResult ? {
+        ...imageResult,
+        generationTimeMs: totalImageTime,
+      } : undefined,
+      textFallback,
       securityInfo: {
         anonymizationApplied: enableAnonymization && piiDetection.hasSensitiveData,
         entitiesDetected: Object.keys(piiDetection.entityCounts),
@@ -405,6 +498,8 @@ export {
   validateSlide,
   validateContentFit,
   generatePPTX,
+  generateFluxBlueprint,
+  generateFluxPromptFromBlueprint,
 };
 
 export type {
@@ -412,4 +507,5 @@ export type {
   TemplateProps,
   QAReport,
   ClassificationResult,
+  FluxBlueprint,
 };

@@ -4,12 +4,12 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { InputPanel } from '@/components/InputPanel';
-import { SlidePreview } from '@/components/SlidePreview';
+import { FluxSlideDisplay } from '@/components/FluxSlideDisplay';
 import { ExportButtons } from '@/components/ExportButtons';
 import { SlideHistory } from '@/components/SlideHistory';
 import { SlideData } from '@/types/slide';
 import { UserProfile, SlideRecord } from '@/types/input';
-import { Loader2, Settings, Sparkles, CheckCircle, AlertCircle, Copy, Check } from 'lucide-react';
+import { Loader2, Sparkles, CheckCircle, AlertCircle, Image as ImageIcon, Copy, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Logo } from '@/components/Logo';
 
@@ -24,8 +24,9 @@ export default function Dashboard() {
   const [showHistory, setShowHistory] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(320); // Default 320px (w-80)
   const [isResizing, setIsResizing] = useState(false);
-  const [extractedText, setExtractedText] = useState('');
+  const [editableText, setEditableText] = useState('');
   const [textCopied, setTextCopied] = useState(false);
+  const [showPrompt, setShowPrompt] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -55,52 +56,6 @@ export default function Dashboard() {
     checkUser();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Extract text from slide when data changes
-  useEffect(() => {
-    if (slideData?.props) {
-      const text = extractTextFromSlide(slideData.props);
-      setExtractedText(text);
-    }
-  }, [slideData]);
-
-  const extractTextFromSlide = (props: unknown): string => {
-    const typedProps = props as Record<string, unknown>;
-    const parts: string[] = [];
-    
-    if (typedProps.title) parts.push(String(typedProps.title));
-    if (typedProps.keyMessage) parts.push(String(typedProps.keyMessage));
-    if (typedProps.subtitle) parts.push(String(typedProps.subtitle));
-    
-    // Extract from points array
-    if (Array.isArray(typedProps.points)) {
-      typedProps.points.forEach((point: { title?: string; description?: string }) => {
-        if (point.title) parts.push(point.title);
-        if (point.description) parts.push(point.description);
-      });
-    }
-    
-    // Extract from metrics
-    if (Array.isArray(typedProps.metrics)) {
-      typedProps.metrics.forEach((m: { label?: string; value?: string }) => {
-        if (m.label && m.value) parts.push(`${m.label}: ${m.value}`);
-      });
-    }
-    
-    return parts.join('\n\n');
-  };
-
-  const copyExtractedText = async () => {
-    if (!extractedText) return;
-    try {
-      await navigator.clipboard.writeText(extractedText);
-      setTextCopied(true);
-      toast.success('Slide text copied to clipboard');
-      setTimeout(() => setTextCopied(false), 2000);
-    } catch {
-      toast.error('Failed to copy text');
-    }
-  };
 
   const checkUser = async () => {
     try {
@@ -146,14 +101,21 @@ export default function Dashboard() {
     setSlideData(data);
     setRemainingGenerations(prev => Math.max(0, prev - 1));
     
+    // Set editable text from textFallback
+    if (data.textFallback) {
+      setEditableText(`${data.textFallback.title}\n\n${data.textFallback.content}`);
+    }
+    
     // Show detailed feedback
+    const imageStatus = data.imageUrl ? 'AI Image Generated' : 'HTML Template (Flux failed)';
     const qaMessage = data.qaPassed 
       ? `Quality score: ${data.qaScore}/100 ✅`
       : `Quality score: ${data.qaScore}/100 ⚠️`;
     
     toast.success(
       <div>
-        <p className="font-medium">Slide generated in {data.generationTimeMs}ms!</p>
+        <p className="font-medium">{imageStatus}</p>
+        <p className="text-sm text-gray-600">Generated in {data.generationTimeMs}ms</p>
         <p className="text-sm text-gray-600">{qaMessage}</p>
       </div>,
       { duration: 4000 }
@@ -232,7 +194,9 @@ export default function Dashboard() {
               }}
             >
               {slideData ? (
-                <SlidePreview
+                <FluxSlideDisplay
+                  imageUrl={slideData.imageUrl}
+                  textFallback={slideData.textFallback}
                   templateId={slideData.templateId}
                   archetypeId={slideData.archetypeId}
                   props={slideData.props}
@@ -246,38 +210,21 @@ export default function Dashboard() {
                     <p className="text-gray-400 text-xs mt-1">AI will auto-select the best slide archetype</p>
                   </div>
                 </div>
-              )}
-            </div>
+            )}
+          </div>
           </div>
 
-          {/* Extracted Text Box - Below Slide Preview */}
-          {slideData && extractedText && (
+          {/* Prompt Display */}
+          {showPrompt && slideData?.imagePrompt && (
             <div className="mt-4 bg-white rounded-lg border border-gray-200 overflow-hidden">
               <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200">
-                <span className="text-sm font-medium text-slate-700">Slide Text (Editable)</span>
-                <button
-                  onClick={copyExtractedText}
-                  className="flex items-center gap-1.5 text-sm text-teal-600 hover:text-teal-700 px-2 py-1 rounded hover:bg-teal-50 transition-colors"
-                >
-                  {textCopied ? (
-                    <>
-                      <Check className="w-4 h-4" />
-                      <span>Copied!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-4 h-4" />
-                      <span>Copy</span>
-                    </>
-                  )}
-                </button>
+                <span className="text-sm font-medium text-slate-700">
+                  Prompt Sent to Flux
+                </span>
               </div>
-              <textarea
-                value={extractedText}
-                onChange={(e) => setExtractedText(e.target.value)}
-                className="w-full h-24 px-4 py-3 text-sm text-slate-700 resize-none focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-                placeholder="Slide text will appear here..."
-              />
+              <pre className="p-4 text-xs text-slate-600 whitespace-pre-wrap max-h-64 overflow-y-auto">
+                {slideData.imagePrompt}
+              </pre>
             </div>
           )}
 
@@ -285,6 +232,22 @@ export default function Dashboard() {
           {slideData && (
             <div className="mt-4 flex items-center justify-between bg-white rounded-lg border border-gray-200 px-4 py-3">
               <div className="flex items-center space-x-6 text-sm">
+                {slideData.imageUrl ? (
+                  <div className="flex items-center text-teal-600">
+                    <ImageIcon className="w-4 h-4 mr-1.5" />
+                    <span className="font-medium">AI Image Generated</span>
+                    {slideData.imageGenerationTimeMs && (
+                      <span className="ml-1 text-gray-400">
+                        ({slideData.imageGenerationTimeMs}ms)
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center text-amber-600">
+                    <AlertCircle className="w-4 h-4 mr-1.5" />
+                    <span className="font-medium">Image generation failed - showing text only</span>
+                  </div>
+                )}
                 <div className="flex items-center">
                   <span className="text-gray-500">Archetype:</span>
                   <span className="ml-2 font-medium capitalize">{slideData.archetypeId.replace(/_/g, ' ')}</span>
@@ -304,6 +267,12 @@ export default function Dashboard() {
                 <div className="text-xs text-gray-400">
                   {slideData.modelUsed}
                 </div>
+                <button
+                  onClick={() => setShowPrompt(!showPrompt)}
+                  className="text-xs text-blue-600 hover:text-blue-700 underline"
+                >
+                  {showPrompt ? 'Hide Prompt' : 'Show Prompt'}
+                </button>
               </div>
               <ExportButtons 
                 slideElement={slideRef.current} 
